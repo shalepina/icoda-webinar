@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ICODA — Как AI выбирает источники</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,sans-serif;background:#E8EFFE;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.frame{width:min(960px,98vw);aspect-ratio:16/9;border-radius:20px;overflow:hidden;box-shadow:0 24px 80px rgba(37,99,235,0.18),0 4px 20px rgba(0,0,0,0.08);border:1px solid #DBEAFE;position:relative}
+.slide{width:100%;height:100%;display:none;position:absolute;top:0;left:0}
+.slide.active{display:flex}
+.controls{display:flex;align-items:center;gap:16px;margin-top:20px}
+.btn{width:40px;height:40px;border-radius:50%;background:#2563EB;border:none;cursor:pointer;color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.btn:disabled{background:#DBEAFE;color:#9CA3AF;cursor:not-allowed;opacity:.6}
+.dots{display:flex;gap:5px;align-items:center}
+.dot{width:6px;height:6px;border-radius:3px;background:#BFDBFE;cursor:pointer;transition:all .25s}
+.dot.active{width:20px;background:#2563EB}
+.counter{color:#6B7280;font-size:12px;margin-top:8px;font-weight:600}
+.tag{display:inline-block;border-radius:20px;padding:4px 14px;font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.src{color:#6B7280;font-size:10px;font-style:italic}
+.card{background:#F4F7FF;border:1px solid #DBEAFE;border-radius:16px;padding:18px 20px;box-shadow:0 2px 12px rgba(37,99,235,0.07)}
+.point{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px}
+.dot2{width:5px;height:5px;border-radius:50%;margin-top:7px;flex-shrink:0}
+
+/* DIVIDER */
+#s1{background:linear-gradient(135deg,#0F1C3F 0%,#1D4ED8 60%,#06B6D4 100%);flex-direction:column;align-items:center;justify-content:center;position:relative}
+#s1 .bg1{position:absolute;top:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.06)}
+#s1 .bg2{position:absolute;bottom:-60px;left:-60px;width:250px;height:250px;border-radius:50%;background:rgba(255,255,255,0.04)}
+#s1 .content{text-align:center;z-index:1}
+#s1 .lbl{font-size:11px;color:rgba(255,255,255,.6);font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
+#s1 h2{font-size:48px;font-weight:900;color:#fff;margin:0 0 14px;line-height:1.1}
+#s1 .sub{font-size:20px;color:rgba(255,255,255,.65);margin-bottom:32px}
+#s1 .link-pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 28px;display:inline-block;color:#fff;font-size:13px;font-weight:600}
+
+/* FACTOR SLIDES */
+.factor{background:#fff;flex-direction:column;padding:36px 50px}
+.factor .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.factor .cat-label{font-size:10px;color:#6B7280;font-weight:600;letter-spacing:1px}
+.factor .head{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.factor .head-ico{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px}
+.factor h2{font-size:24px;font-weight:800;color:#111827;margin:0}
+.factor .points{display:flex;flex-direction:column;gap:12px;flex:1}
+.factor .point-card{background:#F4F7FF;border:1px solid #DBEAFE;border-radius:16px;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 2px 8px rgba(37,99,235,.05)}
+.factor .point-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.factor .point-head{font-size:14px;font-weight:700;color:#111827;margin-bottom:5px}
+.factor .point-body{font-size:12px;color:#374151;line-height:1.6}
+.factor .footer{margin-top:12px}
+.proof-bar{background:#F4F7FF;border:1px solid rgba(37,99,235,.3);border-radius:12px;padding:10px 16px;font-size:12px;color:#111827}
+
+/* CHECKLIST */
+#s7{background:#fff;flex-direction:column;padding:40px 52px}
+#s7 h2{font-size:26px;font-weight:800;color:#111827;margin:0 0 14px}
+#s7 .url-pill{background:linear-gradient(135deg,#2563EB,#06B6D4);border-radius:12px;padding:10px 20px;display:inline-flex;align-items:center;gap:10px;margin-bottom:20px;color:#fff;font-size:13px;font-weight:700}
+#s7 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1}
+#s7 .col-title{font-size:10px;color:#6B7280;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+#s7 .cat-item{background:#F4F7FF;border:1px solid #DBEAFE;border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:13px;color:#111827}
+#s7 .action-item{background:#F0FDF8;border:1px solid rgba(16,185,129,.3);border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:#111827;display:flex;gap:10px}
+#s7 .check{color:#10B981;font-weight:800;font-size:14px;flex-shrink:0}
+
+/* CLOSING */
+#s8{background:#fff;flex-direction:column;align-items:center;justify-content:center;padding:52px 72px;text-align:center;position:relative;overflow:hidden}
+#s8 .bg1{position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:#E8EFFE}
+#s8 .bg2{position:absolute;bottom:-60px;left:-60px;width:220px;height:220px;border-radius:50%;background:#F4F7FF}
+#s8 .content{z-index:1;max-width:720px}
+#s8 .quote{font-size:22px;font-weight:700;color:#111827;line-height:1.6;margin-bottom:32px}
+#s8 .quote em{color:#2563EB;font-style:normal}
+#s8 .question{background:linear-gradient(135deg,#2563EB,#06B6D4);border-radius:16px;padding:20px 32px;margin-bottom:32px}
+#s8 .question p{font-size:18px;font-weight:700;color:#fff;line-height:1.5;font-style:italic}
+#s8 .answer{font-size:16px;color:#374151;line-height:1.6}
+#s8 .answer strong{color:#111827}
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <!-- SLIDE 1 — DIVIDER -->
+  <div class="slide active" id="s1">
+    <div class="bg1"></div><div class="bg2"></div>
+    <div class="content">
+      <div class="lbl">Блок 3</div>
+      <h2>Как AI выбирает<br/>источники</h2>
+      <div class="sub">220+ факторов · 5 категорий</div>
+      <div class="link-pill">🔗 icoda.io/ai/ai-seo-ranking-factors-free-checklist</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2 — TECH -->
+  <div class="slide factor" id="s2">
+    <div class="top">
+      <span class="tag" style="background:#2563EB18;border:1px solid #2563EB44;color:#2563EB;margin:0">01 / 05</span>
+      <span class="cat-label">5 КАТЕГОРИЙ ФАКТОРОВ</span>
+    </div>
+    <div class="head">
+      <div class="head-ico" style="background:#2563EB15">⚙️</div>
+      <h2>Техническая доступность для AI-краулеров</h2>
+    </div>
+    <div class="points">
+      <div class="point-card">
+        <div class="point-ico" style="background:#2563EB12">🤖</div>
+        <div><div class="point-head">AI-краулеры — это не Googlebot</div><div class="point-body">GPTBot, PerplexityBot, ClaudeBot, anthropic-ai — проверьте robots.txt. Бот заблокирован → страница не индексируется → цитирования нет.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#2563EB12">⚡</div>
+        <div><div class="point-head">JavaScript — враг AI-читаемости</div><div class="point-body">LLM не запускают браузер при обходе страниц — они читают только статичный HTML. Если контент подгружается динамически, для AI-краулера его не существует, даже если Google видит его отлично.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#2563EB12">🗂️</div>
+        <div><div class="point-head">Ваш бренд как сущность, а не как домен</div><div class="point-body">AI проверяет Wikidata, Wikipedia, Google Knowledge Graph, Crunchbase. Нет там — неверифицированный источник. Это не недоверие — это отсутствие данных для доверия.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 — CONTENT -->
+  <div class="slide factor" id="s3">
+    <div class="top">
+      <span class="tag" style="background:#06B6D418;border:1px solid #06B6D444;color:#06B6D4;margin:0">02 / 05</span>
+      <span class="cat-label">5 КАТЕГОРИЙ ФАКТОРОВ</span>
+    </div>
+    <div class="head">
+      <div class="head-ico" style="background:#06B6D415">📝</div>
+      <h2>Качество и структура контента</h2>
+    </div>
+    <div class="points">
+      <div class="point-card">
+        <div class="point-ico" style="background:#06B6D412">🎯</div>
+        <div><div class="point-head">Ответ — в первых 30% текста</div><div class="point-body">44.2% AI-цитат берутся из введения. Прямой ответ с первого абзаца — не подводка, не анонс — сам ответ. (Growth Memo, 2026)</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#06B6D412">❓</div>
+        <div><div class="point-head">Формат Q&A</div><div class="point-body">«Вопрос → прямой ответ → объяснение» — оптимальная структура для LLM. Q&A-блоки, FAQ, заголовки-вопросы повышают вероятность цитирования.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#06B6D412">🔢</div>
+        <div><div class="point-head">Конкретность: числа, даты, имена</div><div class="point-body">«Конверсия выросла на 46%» работает. «Значительно улучшились» — нет. Расплывчатость снижает вероятность цитирования.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#06B6D412">🔄</div>
+        <div><div class="point-head">Свежесть + авторство</div><div class="point-body">Обновление в 60 дней = ×1.9 шанс. Author Schema = ×3 шанс появиться в AI-ответе. (BrightEdge)</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 — AUTHORITY -->
+  <div class="slide factor" id="s4">
+    <div class="top">
+      <span class="tag" style="background:#7C3AED18;border:1px solid #7C3AED44;color:#7C3AED;margin:0">03 / 05</span>
+      <span class="cat-label">5 КАТЕГОРИЙ ФАКТОРОВ</span>
+    </div>
+    <div class="head">
+      <div class="head-ico" style="background:#7C3AED15">🏛️</div>
+      <h2>Авторитет и брендовые сигналы</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+      <div class="card">
+        <div style="font-size:11px;color:#7C3AED;font-weight:700;letter-spacing:1px;margin-bottom:12px">КОРРЕЛЯЦИЯ С AI OVERVIEWS</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:#374151">Брендовые упоминания</span><strong style="color:#2563EB">0.664</strong></div>
+        <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:12px"><div style="width:66.4%;height:100%;background:linear-gradient(90deg,#2563EB,#06B6D4);border-radius:4px"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:#374151">Обратные ссылки</span><strong style="color:#9CA3AF">0.218</strong></div>
+        <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="width:21.8%;height:100%;background:#9CA3AF;border-radius:4px"></div></div>
+        <div class="src">Position Digital, 2026</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="card" style="flex:1">
+          <div style="font-size:28px;font-weight:900;color:#2563EB;margin-bottom:4px">×3</div>
+          <div style="font-size:12px;color:#374151;line-height:1.5">вероятность цитирования ChatGPT при профиле на Trustpilot / G2 / Capterra</div>
+          <div class="src">SE Ranking, 2025</div>
+        </div>
+        <div class="card" style="flex:1">
+          <div style="font-size:28px;font-weight:900;color:#06B6D4;margin-bottom:4px">×4</div>
+          <div style="font-size:12px;color:#374151;line-height:1.5">шанс цитирования при присутствии на Reddit и Quora</div>
+          <div class="src">SE Ranking, 2025</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <div style="background:#F4F7FF;border:1px solid #DBEAFE;border-radius:12px;padding:12px 18px;font-size:12px;color:#374151;margin-top:12px">
+        💡 AI смотрит не на количество ссылок, а на то, <strong style="color:#111827">говорит ли о вас интернет — и в каком контексте</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 — PR -->
+  <div class="slide factor" id="s5">
+    <div class="top">
+      <span class="tag" style="background:#0891B218;border:1px solid #0891B244;color:#0891B2;margin:0">04 / 05</span>
+      <span class="cat-label">5 КАТЕГОРИЙ ФАКТОРОВ</span>
+    </div>
+    <div class="head">
+      <div class="head-ico" style="background:#0891B215">📡</div>
+      <h2>Внешние сигналы и PR</h2>
+    </div>
+    <div class="points">
+      <div class="point-card">
+        <div class="point-ico" style="background:#0891B212">📰</div>
+        <div><div class="point-head">PR — прямой инструмент AI-видимости</div><div class="point-body">Публикация в авторитетном медиа — сигнал доверия с высоким весом. Стороннее мнение весит больше любого текста на корпоративном сайте.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#0891B212">⚡</div>
+        <div><div class="point-head">Эффект за 24–72 часа</div><div class="point-body">PR-публикации начинали триггерить AI-цитирования в ChatGPT и Gemini уже через 24–72 часа после индексации — реальные данные наших проектов.</div></div>
+      </div>
+      <div class="point-card">
+        <div class="point-ico" style="background:#0891B212">▶️</div>
+        <div><div class="point-head">YouTube — недооценённый AI-сигнал</div><div class="point-body">Один из наиболее часто цитируемых ресурсов в AI-поиске. Видеоконтент — отдельный сигнал, который большинство брендов пока игнорирует.</div></div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="proof-bar">✅ Crypto Prop Firm: <strong style="color:#2563EB">TOP-1 в 5 LLM за 90 дней</strong> через PR + контент · <span class="src">icoda.io/cases/ai-search-dominance-crypto-prop-firm-case</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 — METRICS -->
+  <div class="slide factor" id="s6">
+    <div class="top">
+      <span class="tag" style="background:#F59E0B18;border:1px solid #F59E0B44;color:#F59E0B;margin:0">05 / 05</span>
+      <span class="cat-label">5 КАТЕГОРИЙ ФАКТОРОВ</span>
+    </div>
+    <div class="head">
+      <div class="head-ico" style="background:#F59E0B15">📊</div>
+      <h2>Измерение и мониторинг</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div style="font-size:11px;color:#F59E0B;font-weight:700;letter-spacing:1px;margin-bottom:12px">НОВЫЕ KPI</div>
+          <div class="point"><div class="dot2" style="background:#F59E0B;margin-top:6px"></div><span style="font-size:12px;color:#374151;line-height:1.5">AI Share of Voice — как часто вас называют vs конкурентов</span></div>
+          <div class="point"><div class="dot2" style="background:#F59E0B;margin-top:6px"></div><span style="font-size:12px;color:#374151;line-height:1.5">AI-referral в GA4: chatgpt.com · perplexity.ai · gemini.google.com</span></div>
+          <div class="point"><div class="dot2" style="background:#F59E0B;margin-top:6px"></div><span style="font-size:12px;color:#374151;line-height:1.5">Конверсия из AI-источников — отдельно от Google</span></div>
+        </div>
+        <div class="card">
+          <div style="font-size:11px;color:#2563EB;font-weight:700;letter-spacing:1px;margin-bottom:10px">ИНСТРУМЕНТЫ</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span style="background:#2563EB12;border:1px solid #2563EB25;color:#2563EB;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600">Semrush AI Toolkit</span>
+            <span style="background:#2563EB12;border:1px solid #2563EB25;color:#2563EB;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600">Profound</span>
+            <span style="background:#2563EB12;border:1px solid #2563EB25;color:#2563EB;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600">Superlines</span>
+            <span style="background:#2563EB12;border:1px solid #2563EB25;color:#2563EB;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600">Ahrefs AI Visibility</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#FEF2F2;border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px;flex:1">
+          <div style="font-size:42px;font-weight:900;color:#EF4444;line-height:1;margin-bottom:6px">&lt;25%</div>
+          <div style="font-size:13px;color:#374151;line-height:1.5">маркетологов отслеживают AI-видимость. Слепое пятно, которым пользуются конкуренты.</div>
+          <div class="src">Digitaloft</div>
+        </div>
+        <div style="background:#FEF2F2;border:1px solid rgba(239,68,68,.3);border-radius:14px;padding:18px;flex:1">
+          <div style="font-size:42px;font-weight:900;color:#EF4444;line-height:1;margin-bottom:6px">70%</div>
+          <div style="font-size:13px;color:#374151;line-height:1.5">AI-ответов меняются при повторном запросе. Половина источников при этом заменяется.</div>
+          <div class="src">AirOps</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 — CHECKLIST -->
+  <div class="slide" id="s7">
+    <span class="tag" style="background:#10B98118;border:1px solid #10B98144;color:#10B981">Бесплатный инструмент</span>
+    <h2>Чеклист 220+ факторов AI SEO</h2>
+    <div class="url-pill">🔗 icoda.io/ai/ai-seo-ranking-factors-free-checklist</div>
+    <div class="grid">
+      <div>
+        <div class="col-title">5 категорий</div>
+        <div class="cat-item">⚙️ Техническая доступность</div>
+        <div class="cat-item">📝 Контент и структура</div>
+        <div class="cat-item">🏛️ Авторитет и бренд</div>
+        <div class="cat-item">📡 PR и внешние сигналы</div>
+        <div class="cat-item">📊 Измерение и мониторинг</div>
+      </div>
+      <div>
+        <div class="col-title">Что сделать на этой неделе</div>
+        <div class="action-item"><span class="check">✓</span>Проверить robots.txt на GPTBot, PerplexityBot, ClaudeBot</div>
+        <div class="action-item"><span class="check">✓</span>Пробить бренд в ChatGPT, Perplexity, Gemini по 5 запросам</div>
+        <div class="action-item"><span class="check">✓</span>Прямой ответ в первых двух абзацах ключевых страниц</div>
+        <div class="action-item"><span class="check">✓</span>Создать профиль на G2, Trustpilot или Capterra</div>
+        <div class="action-item"><span class="check">✓</span>Сегмент в GA4 для chatgpt.com / perplexity.ai / gemini</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8 — CLOSING -->
+  <div class="slide" id="s8">
+    <div class="bg1"></div><div class="bg2"></div>
+    <div class="content">
+      <div class="quote">
+        Пять категорий — это не чеклист «сделал и забыл».<br/>
+        Это <em>система</em>, в которой всё работает вместе.<br/><br/>
+        Техника открывает дверь. Контент даёт AI что процитировать.<br/>
+        Авторитет убеждает, что вам можно доверять.<br/>
+        PR усиливает сигнал снаружи. Мониторинг показывает, где рассыпается.
+      </div>
+      <div class="question">
+        <p>«Достаточно ли я знаю об этой компании,<br/>чтобы за неё поручиться?»</p>
+      </div>
+      <div class="answer">
+        Именно этот вопрос задаёт себе каждая языковая модель перед тем, как назвать бренд.<br/>
+        <strong>Ваша задача — сделать так, чтобы ответ был «да».</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button class="btn" id="prev" onclick="go(-1)">←</button>
+  <div class="dots" id="dots"></div>
+  <button class="btn" id="next" onclick="go(1)">→</button>
+</div>
+<div class="counter" id="counter"></div>
+
+<script>
+const total = 8;
+let cur = 0;
+const dotsEl = document.getElementById('dots');
+for(let i=0;i<total;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.onclick=()=>setCur(i);
+  dotsEl.appendChild(d);
+}
+function setCur(n){
+  document.querySelectorAll('.slide')[cur].classList.remove('active');
+  document.querySelectorAll('.dot')[cur].classList.remove('active');
+  cur=n;
+  document.querySelectorAll('.slide')[cur].classList.add('active');
+  document.querySelectorAll('.dot')[cur].classList.add('active');
+  document.getElementById('prev').disabled=cur===0;
+  document.getElementById('next').disabled=cur===total-1;
+  document.getElementById('counter').textContent=(cur+1)+' / '+total;
+}
+function go(d){if(cur+d>=0&&cur+d<total)setCur(cur+d);}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(1);if(e.key==='ArrowLeft')go(-1);});
+setCur(0);
+</script>
+</body>
+</html>
